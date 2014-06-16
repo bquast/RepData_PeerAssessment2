@@ -5,13 +5,54 @@ date: "Monday, June 16, 2014"
 output: html_document
 ---
 
-Download the data
+Synopsis
+---
+
+
+Data Processing
+---
+
+Download the data.
 
 ```{r}
-file.url <- 'https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2'
-file.dest <- 'StormData.csv.bz2'
-download.file(file.url, file.dest)
-bunzip2(file.dest, remove=TRUE)
+# file.url <- 'https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2'
+# file.dest <- 'StormData.csv.bz2'
+# download.file(file.url, file.dest)
+
+# library(R.utils) # needs to be installed (using install.packages('R.utils') )
+# bunzip2(file.dest, remove=TRUE)
+# close(con)
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+Import the data and recode the names, save and remove the **csv** file.
+
+```{r}
+# StormData <- read.csv('StormData.csv')
+load('StormData.RData')
+names(StormData) <- tolower( names(StormData) )
+names(StormData) <- gsub( '_$', '', names(StormData) )
+names(StormData) <- gsub( '_$', '', names(StormData) ) # 2x
+names(StormData) <- gsub( '_', '.', names(StormData) )
+names(StormData)
+save(StormData, file = 'StormData.RData')
+file.remove('StormData.csv')
+attach(StormData)
+```
+
+Some basic information
+
+```{r}
+str(StormData)
+```
+
+Results
+---
+
+```{r}
+library(ggplot2)
+
+# plot data
+plot <- ggplot(StormData, aes(f, weight=fatalities) )
+plot <- plot + geom_bar()
+plot
+```
