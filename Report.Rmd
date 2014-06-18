@@ -12,41 +12,53 @@ Synopsis
 Data Processing
 ---
 
-Download the data.
+Download the data and import it.
 
 ```{r}
-# file.url <- 'https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2'
-# file.dest <- 'StormData.csv.bz2'
-# download.file(file.url, file.dest)
+file.url <- 'https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2'
+file.dest <- 'StormData.csv.bz2'
+download.file(file.url, file.dest, method='auto')
 
 # library(R.utils) # needs to be installed (using install.packages('R.utils') )
-# bunzip2(file.dest, remove=TRUE)
-# close(con)
+bunzip2(file.dest, remove=TRUE)
+close(con)
+
+StormData <- read.csv('StormData.csv')
 ```
 
-Import the data and recode the names, save and remove the **csv** file.
+Recode the names, save to an RData file and remove the **csv** file. Create a variable which sums up all damage variables to one count.
 
 ```{r}
-# StormData <- read.csv('StormData.csv')
 load('StormData.RData')
 names(StormData) <- tolower( names(StormData) )
 names(StormData) <- gsub( '_$', '', names(StormData) )
 names(StormData) <- gsub( '_$', '', names(StormData) ) # 2x
 names(StormData) <- gsub( '_', '.', names(StormData) )
-names(StormData)
+StormData$total.dmg <- sum(StormData$propdmg, StormData$cropdmg)
 save(StormData, file = 'StormData.RData')
 file.remove('StormData.csv')
 attach(StormData)
 ```
 
-Some basic information
+Summarise the fatalities, injuries and damage, once for totals and once for averages.
 
 ```{r}
-str(StormData)
+library(dplyr, warn.conflicts=FALSE)
+total.stat <- summarise( group_by(StormData, evtype), total.fatalities=sum(fatalities), total.injuries=sum(injuries), total.damage = sum(total.dmg) )
+mean.stat <- summarise( group_by(StormData, evtype), mean.fatalities=mean(fatalities), mean.injuries=mean(injuries) )
+
 ```
 
 Results
 ---
+Print the summary tables
+
+```{r}
+total.stat[with(total.stat, order(-total.fatalities, -total.injuries)),]
+total.stat[with(total.stat, order(-total.damage)),]
+mean.stat[with(mean.stat, order(-mean.fatalities, -mean.injuries)),]
+```
+
 
 ```{r}
 library(ggplot2)
