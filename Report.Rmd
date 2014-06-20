@@ -19,7 +19,7 @@ file.url <- 'https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.cs
 file.dest <- 'StormData.csv.bz2'
 download.file(file.url, file.dest, method='auto')
 
-# library(R.utils) # needs to be installed (using install.packages('R.utils') )
+library(R.utils, warn.conflicts=FALSE) # needs to be installed (using install.packages('R.utils') )
 bunzip2(file.dest, remove=TRUE)
 close(con)
 
@@ -29,12 +29,14 @@ StormData <- read.csv('StormData.csv')
 Recode the names, save to an RData file and remove the **csv** file. Create a variable which sums up all damage variables to one count.
 
 ```{r}
-load('StormData.RData')
 names(StormData) <- tolower( names(StormData) )
 names(StormData) <- gsub( '_$', '', names(StormData) )
 names(StormData) <- gsub( '_$', '', names(StormData) ) # 2x
 names(StormData) <- gsub( '_', '.', names(StormData) )
 StormData$total.dmg <- sum(StormData$propdmg, StormData$cropdmg)
+StormData$bgn.date <- gsub( ' 0:00:00$', '', StormData$bgn.date )
+StormData$bgn.date <- as.Date(StormData$bgn.date, '%d/%m/%Y')
+StormData$year <- format(StormData$bgn.date, '%Y')
 save(StormData, file = 'StormData.RData')
 file.remove('StormData.csv')
 attach(StormData)
@@ -46,8 +48,10 @@ Summarise the fatalities, injuries and damage, once for totals and once for aver
 library(dplyr, warn.conflicts=FALSE)
 total.stat <- summarise( group_by(StormData, evtype), total.fatalities=sum(fatalities), total.injuries=sum(injuries), total.damage = sum(total.dmg) )
 mean.stat <- summarise( group_by(StormData, evtype), mean.fatalities=mean(fatalities), mean.injuries=mean(injuries) )
-
+top.events <- total.stat[with(total.stat, order(-total.fatalities, -total.injuries)),]$evtype[1:10]
+top.stat <- subset(total.stat, evtype %in% top.events)
 ```
+
 
 Results
 ---
@@ -59,9 +63,15 @@ total.stat[with(total.stat, order(-total.damage)),]
 mean.stat[with(mean.stat, order(-mean.fatalities, -mean.injuries)),]
 ```
 
-
 ```{r}
 library(ggplot2)
+plot <- ggplot(top.stat, aes(evtype, weight=total.fatalities ) )
+plot <- plot + geom_bar()
+plot
+
+plot <- ggplot(top.stat, aes(evtype, weight=total.damage ) )
+plot <- plot + geom_bar()
+plot
 
 # plot data
 plot <- ggplot(StormData, aes(f, weight=fatalities) )
