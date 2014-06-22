@@ -7,74 +7,77 @@ output: html_document
 
 Synopsis
 ---
-
+This report analyses storm and natural disaster data from the United States. Specifically, it focusses on the public health as well as the economic damage caused by different event types. It finds that tornados are the most consequential in terms of public health. It also finds that Torandos of force 4 are most fatal. In addition this report analyses economics damage as well as per event public health effects.
 
 Data Processing
 ---
-
 Download the data and import it.
-
 ```{r}
-file.url <- 'https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2'
-file.dest <- 'StormData.csv.bz2'
-download.file(file.url, file.dest, method='auto')
-
-library(R.utils, warn.conflicts=FALSE) # needs to be installed (using install.packages('R.utils') )
-bunzip2(file.dest, remove=TRUE)
-close(con)
-
+library(R.utils, warn.conflicts=FALSE)
+bunzip2('StormData.csv.bz2')
 StormData <- read.csv('StormData.csv')
 ```
 
-Recode the names, save to an RData file and remove the **csv** file. Create a variable which sums up all damage variables to one count.
-
+Recode the names (to a clean R-style), encode the date, create a total damages variable, then save to an RData file and remove the **csv** file.
 ```{r}
 names(StormData) <- tolower( names(StormData) )
 names(StormData) <- gsub( '_$', '', names(StormData) )
 names(StormData) <- gsub( '_$', '', names(StormData) ) # 2x
 names(StormData) <- gsub( '_', '.', names(StormData) )
+
 StormData$total.dmg <- sum(StormData$propdmg, StormData$cropdmg)
-StormData$bgn.date <- gsub( ' 0:00:00$', '', StormData$bgn.date )
-StormData$bgn.date <- as.Date(StormData$bgn.date, '%d/%m/%Y')
-StormData$year <- format(StormData$bgn.date, '%Y')
+
 save(StormData, file = 'StormData.RData')
 file.remove('StormData.csv')
 attach(StormData)
 ```
 
 Summarise the fatalities, injuries and damage, once for totals and once for averages.
-
 ```{r}
 library(dplyr, warn.conflicts=FALSE)
 total.stat <- summarise( group_by(StormData, evtype), total.fatalities=sum(fatalities), total.injuries=sum(injuries), total.damage = sum(total.dmg) )
 mean.stat <- summarise( group_by(StormData, evtype), mean.fatalities=mean(fatalities), mean.injuries=mean(injuries) )
 top.events <- total.stat[with(total.stat, order(-total.fatalities, -total.injuries)),]$evtype[1:10]
+top.damages <- total.stat[with(total.stat, order(-total.damage)),]$evtype[1:10]
 top.stat <- subset(total.stat, evtype %in% top.events)
+top.dam.stat <- subset(total.stat, evtype %in% top.damages)
 ```
 
 
 Results
 ---
-Print the summary tables
-
-```{r}
-total.stat[with(total.stat, order(-total.fatalities, -total.injuries)),]
-total.stat[with(total.stat, order(-total.damage)),]
-mean.stat[with(mean.stat, order(-mean.fatalities, -mean.injuries)),]
-```
-
+Plot the fatalities for the most fatal event types.
 ```{r}
 library(ggplot2)
 plot <- ggplot(top.stat, aes(evtype, weight=total.fatalities ) )
-plot <- plot + geom_bar()
-plot
+plot + geom_bar() + xlab('Event type') + ylab('Number of fatalities')
+```
 
-plot <- ggplot(top.stat, aes(evtype, weight=total.damage ) )
-plot <- plot + geom_bar()
-plot
-
-# plot data
+Since we find that **tornado** is the most fatal, we further analyse this. Plot the fatalities for each storm type (wind force)
+```{r}
 plot <- ggplot(StormData, aes(f, weight=fatalities) )
-plot <- plot + geom_bar()
-plot
+plot + geom_bar() + xlab('Wind force') + ylab('Number of fatalities')
+```
+
+Plot the damage of the most damaging events.
+```{r}
+plot <- ggplot(top.dam.stat, aes(evtype, weight=total.damage ) )
+plot + geom_bar() + xlab('Event type') + ylab('Total damage')
+```
+
+In addition to this we print the top of the tables which summarise the most fatal (injuries included) and most economically damaging events.
+
+The public health statistics.
+```{r}
+top.stat[with(top.stat, order(-total.fatalities, -total.injuries)),]
+```
+
+The economic damage statistics
+```{r}
+top.dam.stat[with(top.dam.stat, order(-total.damage)),]
+```
+
+The mean public health effects, which give an indication of per event consequences.
+```{r}
+mean.stat[with(mean.stat, order(-mean.fatalities, -mean.injuries)),]
 ```
